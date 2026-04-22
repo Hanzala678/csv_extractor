@@ -2,6 +2,14 @@
 
 A Django application for processing CSV files.
 
+## Recommended
+
+Create a virtual environment and activate it
+   '''
+   python -m venv .venv
+   .venv/Scripts/activate
+   '''
+
 ## Setup
 
 1. Install dependencies:

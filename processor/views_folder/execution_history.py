@@ -15,7 +15,17 @@ from django.views.decorators.csrf import csrf_exempt
 # =========================
 @method_decorator(csrf_exempt, name='dispatch')
 class ExecutionHistoryAPIView(APIView):
+    
     def get(self, request):
+        """Returns executions history sorted by creation date (newest first).
+
+        Args:
+            request (Request): HTTP request.
+
+        Returns:
+            Response: List of execution details.
+        """
+        
         executions = Execution.objects.all().order_by('-created_at')
         serializer = ExecutionSerializer(executions, many=True)
         return Response(serializer.data)

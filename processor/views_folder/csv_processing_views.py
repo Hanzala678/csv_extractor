@@ -10,7 +10,6 @@ from ..serializers import ExecutionSerializer
 
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework.authentication import BasicAuthentication, TokenAuthentication
 from rest_framework.permissions import AllowAny
 
 # =========================
@@ -20,7 +19,17 @@ from rest_framework.permissions import AllowAny
 class UploadProcessAPIView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
+    
     def post(self, request):
+        """Takes cvs as input, performs processing and returns execution details with output file link.
+
+        Args:
+            request (Request): HTTP request containing the uploaded file.
+
+        Returns:
+            Response: Execution details with output file link.
+        """
+        
         file = request.FILES.get('file')
 
         if not file:

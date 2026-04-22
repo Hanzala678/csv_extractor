@@ -1,0 +1,32 @@
+
+<!DOCTYPE html>
+<html>
+<body>
+<h2>Execution History</h2>
+<table border="1">
+<tr>
+  <th>ID</th>
+  <th>Status</th>
+  <th>Rows In</th>
+  <th>Rows Out</th>
+  <th>Input</th>
+  <th>Output</th>
+</tr>
+{% for e in executions %}
+<tr>
+  <td>{{ e.id }}</td>
+  <td>{{ e.status }}</td>
+  <td>{{ e.rows_input }}</td>
+  <td>{{ e.rows_output }}</td>
+  <td><a href="{{ e.input_file.url }}">Download</a></td>
+  <td>
+    {% if e.output_file %}
+    <a href="{{ e.output_file.url }}">Download</a>
+    {% endif %}
+  </td>
+</tr>
+{% endfor %}
+</table>
+<a href="/" class="back-btn">← Back to Upload</a>
+</body>
+</html>

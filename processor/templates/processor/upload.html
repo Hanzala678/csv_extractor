@@ -1,25 +1,430 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Upload CSV</title>
-<style>
-body { font-family: Arial; background: #f5f7fa; }
-.container { width: 400px; margin: 80px auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);} 
-h2 { text-align: center; }
-button { background: #4CAF50; color: white; padding: 10px; border: none; width: 100%; border-radius: 5px; cursor: pointer; }
-button:hover { background: #45a049; }
-a { display: block; text-align: center; margin-top: 15px; }
-</style>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Upload CSV</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0f12;
+      --surface: #13161b;
+      --border: #1f2330;
+      --border-light: #2a2f40;
+      --text: #e2e6f0;
+      --muted: #5a6080;
+      --accent: #4f8fff;
+      --accent-dim: rgba(79,143,255,0.12);
+      --success: #3ecf8e;
+      --success-dim: rgba(62,207,142,0.12);
+      --danger: #f87171;
+      --danger-dim: rgba(248,113,113,0.12);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+    }
+
+    .wrapper {
+      width: 100%;
+      max-width: 460px;
+    }
+
+    /* Back button */
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12px;
+      padding: 7px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      transition: all 0.15s;
+      margin-bottom: 32px;
+    }
+    .back-btn:hover { color: var(--text); border-color: var(--border-light); background: rgba(255,255,255,0.04); }
+    .back-btn svg { width: 13px; height: 13px; transition: transform 0.15s; }
+    .back-btn:hover svg { transform: translateX(-2px); }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 28px 28px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+      color: var(--text);
+    }
+
+    .card-subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+      letter-spacing: 0.02em;
+    }
+
+    .card-body {
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 1.5px dashed var(--border-light);
+      border-radius: 8px;
+      padding: 36px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      background: rgba(255,255,255,0.01);
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .drop-icon {
+      width: 36px; height: 36px;
+      margin: 0 auto 12px;
+      color: var(--muted);
+      transition: color 0.2s;
+    }
+    .drop-zone:hover .drop-icon, .drop-zone.dragover .drop-icon { color: var(--accent); }
+    .drop-label {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .drop-label strong { color: var(--text); font-weight: 500; }
+    .drop-label .hint {
+      display: block;
+      font-size: 11px;
+      margin-top: 4px;
+      color: var(--muted);
+      opacity: 0.7;
+    }
+
+    /* File chosen state */
+    .file-chosen {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(79,143,255,0.25);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text);
+    }
+    .file-chosen.visible { display: flex; }
+    .file-chosen svg { width: 16px; height: 16px; color: var(--accent); flex-shrink: 0; }
+    .file-chosen .fname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-chosen .clear-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0 2px;
+      line-height: 1;
+      transition: color 0.15s;
+      width: auto;
+    }
+    .file-chosen .clear-btn:hover { color: var(--danger); background: none; }
+
+    /* Submit button */
+    .submit-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 13px;
+      border-radius: 8px;
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      letter-spacing: 0.02em;
+    }
+    .submit-btn:hover:not(:disabled) { background: #3a7aef; }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .submit-btn svg { width: 15px; height: 15px; }
+    .submit-btn .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    .submit-btn.loading .spinner { display: block; }
+    .submit-btn.loading .btn-icon { display: none; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Status result */
+    .result {
+      display: none;
+      border-radius: 8px;
+      padding: 16px;
+      font-size: 12px;
+      line-height: 1.7;
+      border: 1px solid transparent;
+    }
+    .result.success {
+      display: block;
+      background: var(--success-dim);
+      border-color: rgba(62,207,142,0.25);
+      color: var(--text);
+    }
+    .result.error {
+      display: block;
+      background: var(--danger-dim);
+      border-color: rgba(248,113,113,0.25);
+      color: var(--danger);
+    }
+    .result-row { display: flex; justify-content: space-between; gap: 16px; }
+    .result-label { color: var(--muted); }
+    .result-value { color: var(--text); font-weight: 500; }
+    .result-divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 10px 0; }
+    .result-dl {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--success);
+      text-decoration: none;
+      padding: 6px 12px;
+      border: 1px solid rgba(62,207,142,0.3);
+      border-radius: 6px;
+      margin-top: 4px;
+      transition: all 0.15s;
+      width: 100%;
+      justify-content: center;
+    }
+    .result-dl:hover { background: rgba(62,207,142,0.1); }
+    .result-dl svg { width: 12px; height: 12px; }
+
+    /* Footer link */
+    .card-footer {
+      padding: 18px 28px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+    .history-link {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.15s;
+    }
+    .history-link:hover { color: var(--text); }
+    .history-link svg { width: 13px; height: 13px; transition: transform 0.15s; }
+    .history-link:hover svg { transform: translateX(2px); }
+  </style>
 </head>
 <body>
-<div class="container">
-<h2>Upload CSV File</h2>
-<form method="post" enctype="multipart/form-data">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Process</button>
-</form>
-<a href="/history/">View History →</a>
+
+<div class="wrapper">
+
+  <a href="#" class="back-btn" style="visibility:hidden">placeholder</a>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Upload CSV File</div>
+      <div class="card-subtitle">Select a .csv file to process and download the output</div>
+    </div>
+
+    <div class="card-body">
+
+      <!-- Drop zone -->
+      <div class="drop-zone" id="dropZone">
+        <input type="file" accept=".csv" id="fileInput" required/>
+        <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <div class="drop-label">
+          <strong>Choose a file</strong> or drag it here
+          <span class="hint">CSV files only</span>
+        </div>
+      </div>
+
+      <!-- File chosen -->
+      <div class="file-chosen" id="fileChosen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <span class="fname" id="fileName"></span>
+        <button class="clear-btn" id="clearBtn" type="button">✕</button>
+      </div>
+
+      <!-- Submit -->
+      <button class="submit-btn" id="submitBtn" type="button">
+        <span class="spinner"></span>
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="10 8 14 12 10 16"/>
+        </svg>
+        Process File
+      </button>
+
+      <!-- Result -->
+      <div class="result" id="result"></div>
+
+    </div>
+
+    <div class="card-footer">
+      <a href="/history" class="history-link">
+        View execution history
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="5" y1="12" x2="19" y2="12"/>
+          <polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+
 </div>
+
+<script>
+  const dropZone  = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const fileChosen = document.getElementById('fileChosen');
+  const fileName  = document.getElementById('fileName');
+  const clearBtn  = document.getElementById('clearBtn');
+  const submitBtn = document.getElementById('submitBtn');
+  const result    = document.getElementById('result');
+
+  // Drag states
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) setFile(fileInput.files[0]);
+  });
+
+  function setFile(file) {
+    fileName.textContent = file.name;
+    fileChosen.classList.add('visible');
+    dropZone.style.display = 'none';
+    result.className = 'result';
+  }
+
+  clearBtn.addEventListener('click', () => {
+    fileInput.value = '';
+    fileChosen.classList.remove('visible');
+    dropZone.style.display = '';
+    result.className = 'result';
+  });
+
+  submitBtn.addEventListener('click', async () => {
+    if (!fileInput.files[0]) {
+      dropZone.style.borderColor = 'var(--danger)';
+      setTimeout(() => dropZone.style.borderColor = '', 1200);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    submitBtn.disabled = true;
+    submitBtn.classList.add('loading');
+    result.className = 'result';
+
+    try {
+      const res = await fetch('/api/process/', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      let html = `
+        <div class="result-row">
+          <span class="result-label">Status</span>
+          <span class="result-value">${data.status}</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">Rows in</span>
+          <span class="result-value">${(data.rows_input ?? '—').toLocaleString()}</span>
+        </div>`;
+
+      if (data.rows_output != null) {
+        html += `
+        <div class="result-row">
+          <span class="result-label">Rows out</span>
+          <span class="result-value">${data.rows_output.toLocaleString()}</span>
+        </div>`;
+      }
+
+      if (data.output_file_url) {
+        html += `
+        <hr class="result-divider"/>
+        <a class="result-dl" href="${data.output_file_url}" download>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Download Output
+        </a>`;
+      }
+
+      result.innerHTML = html;
+      result.classList.add('success');
+
+    } catch (err) {
+      result.textContent = 'Something went wrong. Please try again.';
+      result.classList.add('error');
+    }
+
+    submitBtn.disabled = false;
+    submitBtn.classList.remove('loading');
+  });
+</script>
 </body>
 </html>

@@ -1,32 +1,427 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Execution History</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0f12;
+      --surface: #13161b;
+      --border: #1f2330;
+      --border-light: #2a2f40;
+      --text: #e2e6f0;
+      --muted: #5a6080;
+      --accent: #4f8fff;
+      --accent-dim: rgba(79,143,255,0.12);
+      --success: #3ecf8e;
+      --success-dim: rgba(62,207,142,0.12);
+      --warning: #f59e0b;
+      --warning-dim: rgba(245,158,11,0.12);
+      --danger: #f87171;
+      --danger-dim: rgba(248,113,113,0.12);
+      --pending: #a78bfa;
+      --pending-dim: rgba(167,139,250,0.12);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      padding: 48px 32px;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: flex-end;
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .page-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .page-subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      padding-bottom: 2px;
+      letter-spacing: 0.04em;
+    }
+
+    .refresh-btn {
+      margin-left: auto;
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .refresh-btn:hover { color: var(--text); border-color: var(--accent); }
+    .refresh-btn svg { width: 13px; height: 13px; }
+    .refresh-btn.spinning svg { animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Table container */
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead tr {
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+
+    th {
+      padding: 14px 20px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+      animation: fadeRow 0.3s ease both;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.025); }
+
+    @keyframes fadeRow {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    td {
+      padding: 16px 20px;
+      vertical-align: middle;
+      color: var(--text);
+    }
+
+    /* ID cell */
+    .cell-id {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .cell-id span {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+    }
+
+    /* Status badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: capitalize;
+      white-space: nowrap;
+    }
+    .badge::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .badge-success  { background: var(--success-dim);  color: var(--success);  }
+    .badge-success::before  { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .badge-warning  { background: var(--warning-dim);  color: var(--warning);  }
+    .badge-warning::before  { background: var(--warning); animation: pulse 1.5s ease-in-out infinite; }
+    .badge-danger   { background: var(--danger-dim);   color: var(--danger);   }
+    .badge-danger::before   { background: var(--danger); }
+    .badge-pending  { background: var(--pending-dim);  color: var(--pending);  }
+    .badge-pending::before  { background: var(--pending); animation: pulse 1.5s ease-in-out infinite; }
+    .badge-default  { background: rgba(255,255,255,0.06); color: var(--muted); }
+    .badge-default::before  { background: var(--muted); }
+
+    @keyframes pulse {
+      0%,100% { opacity: 1; } 50% { opacity: 0.4; }
+    }
+
+    /* Rows */
+    .cell-rows {
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+    .rows-arrow {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .rows-arrow .num { color: var(--text); }
+    .rows-arrow svg { width: 12px; height: 12px; color: var(--muted); flex-shrink: 0; }
+
+    /* Download link */
+    .dl-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 12px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+    .dl-link:hover {
+      background: var(--accent-dim);
+      border-color: rgba(79,143,255,0.3);
+    }
+    .dl-link svg { width: 12px; height: 12px; }
+
+    .dl-none {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    /* Empty & loading states */
+    .state-row td {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .state-row .icon {
+      display: block;
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+    .loader {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid var(--border-light);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-bottom: 12px;
+    }
+
+    /* Back button */
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12px;
+      padding: 7px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      transition: all 0.15s;
+      margin-bottom: 32px;
+    }
+    .back-btn:hover {
+      color: var(--text);
+      border-color: var(--border-light);
+      background: rgba(255,255,255,0.04);
+    }
+    .back-btn svg { width: 13px; height: 13px; transition: transform 0.15s; }
+    .back-btn:hover svg { transform: translateX(-2px); }
+
+    /* Summary bar */
+    .summary-bar {
+      display: flex;
+      gap: 24px;
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      background: rgba(255,255,255,0.015);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .summary-item strong { color: var(--text); margin-right: 4px; }
+  </style>
+</head>
 <body>
-<h2>Execution History</h2>
-<table border="1">
-<tr>
-  <th>ID</th>
-  <th>Status</th>
-  <th>Rows In</th>
-  <th>Rows Out</th>
-  <th>Input</th>
-  <th>Output</th>
-</tr>
-{% for e in executions %}
-<tr>
-  <td>{{ e.id }}</td>
-  <td>{{ e.status }}</td>
-  <td>{{ e.rows_input }}</td>
-  <td>{{ e.rows_output }}</td>
-  <td><a href="{{ e.input_file.url }}">Download</a></td>
-  <td>
-    {% if e.output_file %}
-    <a href="{{ e.output_file.url }}">Download</a>
-    {% endif %}
-  </td>
-</tr>
-{% endfor %}
-</table>
-<a href="/" class="back-btn">← Back to Upload</a>
+
+<a href="/" class="back-btn">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <line x1="19" y1="12" x2="5" y2="12"/>
+    <polyline points="12 19 5 12 12 5"/>
+  </svg>
+  Back to Upload
+</a>
+
+<div class="page-header">
+  <div>
+    <div class="page-title">Execution History</div>
+    <div class="page-subtitle" style="margin-top:6px;">All past runs and their results</div>
+  </div>
+  <button class="refresh-btn" id="refreshBtn" onclick="loadHistory()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M23 4v6h-6M1 20v-6h6"/>
+      <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+    </svg>
+    Refresh
+  </button>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Status</th>
+        <th>Rows In → Out</th>
+        <th>Input</th>
+        <th>Output</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+      <tr class="state-row">
+        <td colspan="5">
+          <div class="loader"></div>
+          <div>Loading executions…</div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="summary-bar" id="summaryBar" style="display:none;"></div>
+</div>
+
+<script>
+  function getBadgeClass(status) {
+    const s = (status || '').toLowerCase();
+    if (['done', 'success', 'completed', 'finished'].includes(s)) return 'badge-success';
+    if (['running', 'processing', 'in_progress'].includes(s)) return 'badge-warning';
+    if (['failed', 'error'].includes(s)) return 'badge-danger';
+    if (['pending', 'queued', 'waiting'].includes(s)) return 'badge-pending';
+    return 'badge-default';
+  }
+
+  function dlIcon() {
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>`;
+  }
+
+  async function loadHistory() {
+    const btn = document.getElementById('refreshBtn');
+    btn.classList.add('spinning');
+
+    try {
+      const res = await fetch('/api/history/');
+      const data = await res.json();
+      renderTable(data);
+    } catch (err) {
+      document.getElementById('tableBody').innerHTML = `
+        <tr class="state-row">
+          <td colspan="5">
+            <span class="icon">⚠️</span>
+            Failed to load history. Check the console for details.
+          </td>
+        </tr>`;
+    } finally {
+      btn.classList.remove('spinning');
+    }
+  }
+
+  function renderTable(data) {
+    const tbody = document.getElementById('tableBody');
+    const summaryBar = document.getElementById('summaryBar');
+
+    if (!data || data.length === 0) {
+      tbody.innerHTML = `
+        <tr class="state-row">
+          <td colspan="5">
+            <span class="icon">📭</span>
+            No executions found yet.
+          </td>
+        </tr>`;
+      summaryBar.style.display = 'none';
+      return;
+    }
+
+    tbody.innerHTML = data.map((e, i) => `
+      <tr style="animation-delay:${i * 40}ms">
+        <td class="cell-id"><span>#${e.id}</span></td>
+        <td>
+          <span class="badge ${getBadgeClass(e.status)}">${e.status}</span>
+        </td>
+        <td>
+          <div class="rows-arrow">
+            <span class="num">${(e.rows_input ?? '—').toLocaleString()}</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+              <polyline points="12 5 19 12 12 19"/>
+            </svg>
+            <span class="num">${(e.rows_output ?? '—').toLocaleString()}</span>
+          </div>
+        </td>
+        <td>
+          ${e.input_file_url
+            ? `<a class="dl-link" href="${e.input_file_url}" download>${dlIcon()} Input</a>`
+            : `<span class="dl-none">—</span>`}
+        </td>
+        <td>
+          ${e.output_file_url
+            ? `<a class="dl-link" href="${e.output_file_url}" download>${dlIcon()} Output</a>`
+            : `<span class="dl-none">—</span>`}
+        </td>
+      </tr>
+    `).join('');
+
+    // Summary bar
+    const total = data.length;
+    const success = data.filter(e => ['done','success','completed','finished'].includes((e.status||'').toLowerCase())).length;
+    const failed  = data.filter(e => ['failed','error'].includes((e.status||'').toLowerCase())).length;
+    const running = data.filter(e => ['running','processing','in_progress'].includes((e.status||'').toLowerCase())).length;
+    const totalIn  = data.reduce((s,e) => s + (e.rows_input  || 0), 0);
+    const totalOut = data.reduce((s,e) => s + (e.rows_output || 0), 0);
+
+    summaryBar.style.display = 'flex';
+    summaryBar.innerHTML = `
+      <span><strong>${total}</strong> total</span>
+      <span><strong style="color:var(--success)">${success}</strong> succeeded</span>
+      ${failed  ? `<span><strong style="color:var(--danger)">${failed}</strong> failed</span>` : ''}
+      ${running ? `<span><strong style="color:var(--warning)">${running}</strong> running</span>` : ''}
+      <span style="margin-left:auto"><strong>${totalIn.toLocaleString()}</strong> rows in · <strong>${totalOut.toLocaleString()}</strong> rows out</span>
+    `;
+  }
+
+  loadHistory();
+</script>
 </body>
 </html>
